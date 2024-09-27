@@ -1,5 +1,7 @@
 use chrono::{Datelike, NaiveDate};
 use ndarray::Array2;
+use crate::api::fetch_elevation;
+use crate::error::GeomError;
 
 pub fn date_to_angle(date: NaiveDate) -> f64 {
     let days_in_year = if date.year() % 4 == 0 { 366 } else { 365 };
@@ -18,17 +20,43 @@ fn lat_long_alt_to_xyz(points: &Array2<f64>) -> Array2<f64> {
         let r_alt = r + alt;
         xyz[[i, 0]] = r_alt * lat.cos() * long.cos();
         xyz[[i, 1]] = r_alt * lat.cos() * long.sin();
-        xyz[[i, 2]] = alt;
+        xyz[[i, 2]] = r_alt * lat.sin();
     }
     xyz
 }
 
-pub fn process_points(points: &Array2<f64>) -> Array2<f64> {
+async fn discretize_points(points: &Array2<f64>, discretization_points: usize, host: &str) -> Result<Array2<f64>, GeomError> {
+    let mut discretized_points = Vec::new();
+    
+    for window in points.windows((2, 3)) {
+        let start = window.row(0);
+        let end = window.row(1);
+        
+        discretized_points.push(start.to_vec());
+        
+        for i in 1..=discretization_points {
+            let t = i as f64 / (discretization_points as f64 + 1.0);
+            let lat = start[0] * (1.0 - t) + end[0] * t;
+            let lon = start[1] * (1.0 - t) + end[1] * t;
+            let elevation = fetch_elevation(lon, lat, host).await
+                .map_err(|e| GeomError::ElevationFetchError(e.to_string()))?;
+            discretized_points.push(vec![lat, lon, elevation]);
+        }
+    }
+    
+    discretized_points.push(points.row(points.nrows() - 1).to_vec());
+
+    Array2::from_shape_vec((discretized_points.len(), 3), discretized_points.into_iter().flatten().collect())
+        .map_err(|e| GeomError::DiscretizationError(e.to_string()))
+}
+
+pub async fn process_points(points: &Array2<f64>, discretization_points: usize, host: &str) -> Result<Array2<f64>, GeomError> {
     if points.is_empty() {
-        return Array2::zeros((0, 3));
+        return Ok(Array2::zeros((0, 3)));
     }
 
-    let xyz_points = lat_long_alt_to_xyz(points);
+    let discretized_array = discretize_points(points, discretization_points, host).await?;
+    let xyz_points = lat_long_alt_to_xyz(&discretized_array);
 
     let min_point = xyz_points.rows().into_iter()
         .min_by(|a, b| {
@@ -38,5 +66,5 @@ pub fn process_points(points: &Array2<f64>) -> Array2<f64> {
         })
         .unwrap();
 
-    &xyz_points - &min_point
+    Ok(&xyz_points - &min_point)
 }

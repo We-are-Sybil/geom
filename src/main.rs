@@ -51,13 +51,21 @@ async fn main() -> Result<(), GeomError> {
     println!("{} {}", "[+] Info:".bold().underline(), "Altitude is being fetched and data is being processed.");
     
     let mut all_processed_records = Vec::new();
+    let mut batch_number = 0;
 
     while let Some(batch_result) = records.by_ref().take(batch_size).collect::<Result<Vec<_>, _>>().ok() {
         if batch_result.is_empty() {
             break;
         }
 
+        batch_number += 1;
         let batch_id = Uuid::new_v4().to_string();
+        
+        println!("{} Starting to process batch {} with ID: {}", 
+            "[+] Process:".yellow().bold(), 
+            batch_number.to_string().magenta(), 
+            batch_id.green());
+
         let mut batch_points = Vec::new();
         let mut batch_data = Vec::new();
 
@@ -78,23 +86,54 @@ async fn main() -> Result<(), GeomError> {
 
         if !batch_points.is_empty() {
             let batch_array = Array2::from_shape_vec((batch_points.len(), 3), batch_points.into_iter().flatten().collect())?;
-            let centered_points = process_points(&batch_array);
-            all_points.append(Axis(0), centered_points.view())?;
+            
+            println!("{} Discretizing and processing points for batch {}", 
+                "[+] Process:".yellow().bold(), 
+                batch_number.to_string().magenta());
+            
+            let centered_points = process_points(&batch_array, args.discretization_points, &args.host).await?;
+
+            // Calculate angles for discretized points
+            let mut all_angles = Vec::new();
+            for i in 0..batch_data.len() - 1 {
+                let start_angle = batch_data[i].0;
+                let end_angle = batch_data[i + 1].0;
+                let angle_step = (end_angle - start_angle) / (args.discretization_points as f64 + 1.0);
+                
+                all_angles.push(start_angle);
+                for j in 1..=args.discretization_points {
+                    all_angles.push(start_angle + angle_step * j as f64);
+                }
+            }
+            all_angles.push(batch_data.last().unwrap().0);
 
             // Process records
             for (i, row) in centered_points.rows().into_iter().enumerate() {
+                let is_original = i % (args.discretization_points + 1) == 0;
+                let action = if is_original {
+                    hash_with_salt(&batch_data[i / (args.discretization_points + 1)].1, &args.salt)
+                } else {
+                    String::new()
+                };
+
                 all_processed_records.push(Record {
                     batch_id: batch_id.clone(),
-                    angle: batch_data[i].0,
-                    action: hash_with_salt(&batch_data[i].1, &args.salt),
+                    angle: all_angles[i],
+                    action,
                     longitude: row[0],
                     latitude: row[1],
                     elevation: row[2],
+                    is_original,
                 });
             }
+
+            all_points.append(Axis(0), centered_points.view())?;
         }
 
-        println!("{} Processed batch with ID: {}", "[+] Process:".blue().bold(), batch_id);
+        println!("{} Completed processing batch {} with ID: {}", 
+            "[✓] Success:".green().bold(), 
+            batch_number.to_string().yellow(), 
+            batch_id.green());
     }
 
     // Save processed records using the DataSaver

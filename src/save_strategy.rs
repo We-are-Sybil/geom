@@ -27,6 +27,7 @@ pub struct Record {
     pub longitude: f64,
     pub latitude: f64,
     pub elevation: f64,
+    pub is_original: bool,
 }
 
 // Trait for different saving strategies
@@ -42,7 +43,7 @@ impl SaveStrategy for CsvSaveStrategy {
         let mut writer = Writer::from_path(output_path)?;
         
         // Write header
-        writer.write_record(&["BatchID", "Angle", "Action", "Processed_Longitude", "Processed_Latitude", "Processed_Elevation"])?;
+        writer.write_record(&["BatchID", "Angle", "Action", "Processed_Longitude", "Processed_Latitude", "Processed_Elevation", "Is_Original"])?;
         
         // Write records
         for record in records {
@@ -53,6 +54,7 @@ impl SaveStrategy for CsvSaveStrategy {
                 &record.longitude.to_string(),
                 &record.latitude.to_string(),
                 &record.elevation.to_string(),
+                &record.is_original.to_string(),
             ])?;
         }
         

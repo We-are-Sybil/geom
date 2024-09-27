@@ -27,4 +27,10 @@ pub enum GeomError {
 
     #[error("Chrono parse error: {0}")]
     ChronoParseError(#[from] ChronoParseError),
+
+    #[error("Discretization error: {0}")]
+    DiscretizationError(String),
+
+    #[error("Elevation fetch error: {0}")]
+    ElevationFetchError(String),
 }

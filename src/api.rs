@@ -17,6 +17,7 @@ pub async fn fetch_elevation(latitude: f64, longitude: f64, host: &str) -> Resul
         host, latitude, longitude
     );
 
+
     let response: ApiResponse = reqwest::get(&url).await?.json().await?;
 
     Ok(response.results.first().and_then(|loc| loc.elevation).unwrap_or(0.0))

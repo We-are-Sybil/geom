@@ -44,4 +44,8 @@ pub struct Args {
     /// Hashing salt
     #[arg(short = 's', long)]
     pub salt: String,
+
+    /// Number of points to add when discretizing between each pair of original points
+    #[arg(short = 'n', long = "num-discretize", default_value_t = 20)]
+    pub discretization_points: usize,
 }
