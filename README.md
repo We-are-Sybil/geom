@@ -13,6 +13,24 @@ Geom es una potente herramienta de procesamiento de datos diseñada para analiza
 - **Recuperación de Datos de Elevación**: Se integra con APIs externas para obtener datos de elevación para coordenadas dadas.
 - **Manejo Flexible de Entrada**: Admite nomenclatura personalizada de columnas en archivos CSV de entrada.
 - **Salida Segura**: Genera una salida en un formato que mantiene la utilidad de los datos para el análisis mientras preserva la confidencialidad.
+- **Interpolación de Datos**: Implementa un proceso de interpolación para mejorar la precisión y detalle de los datos geográficos.
+
+## Interpolación de Datos
+
+Geom incluye una función de interpolación de datos que mejora significativamente la precisión y el detalle de los análisis geográficos:
+
+- **Discretización de Puntos**: Entre cada par de puntos originales, se añaden puntos adicionales (configurable, por defecto 20 puntos).
+- **Cálculo de Elevación**: Para cada punto interpolado, se obtiene la elevación correspondiente mediante una API externa.
+- **Mejora de Precisión**: Permite obtener una representación más fiel del terreno entre los puntos reportados.
+- **Detección de Anomalías**: Ayuda a identificar posibles irregularidades en el movimiento que podrían no ser evidentes con solo los puntos originales.
+
+### Video Comparativo
+
+En la siguiente demostración visual se puede ver el impacto de la interpolación de datos: 
+
+https://github.com/user-attachments/assets/207ecd79-a643-4afe-8fd0-dc273c6acbed
+
+Este video muestra cómo la interpolación mejora la representación de rutas y terrenos, proporcionando insights más precisos.
 
 ## Instalación
 
@@ -36,10 +54,17 @@ Geom es una potente herramienta de procesamiento de datos diseñada para analiza
 
 ## Uso
 
-Ejecute el binario compilado con el siguiente comando:
+### Descarga del Ejecutable
+
+Descargue el ejecutable más reciente desde la sección de Releases en GitHub:
+[https://github.com/We-are-Sybil/geom/releases](https://github.com/We-are-Sybil/geom/releases)
+
+### Ejecución
+
+Una vez descargado, ejecute el binario con el siguiente comando:
 
 ```
-./target/release/geom_processor -i <archivo_entrada> -o <archivo_salida> -s <salt>
+./geom -i <archivo_entrada> -o <archivo_salida> -s <salt> -n <puntos_interpolacion>
 ```
 
 ### Argumentos de Línea de Comando
@@ -53,6 +78,7 @@ Ejecute el binario compilado con el siguiente comando:
 - `-y, --longitude-column <CADENA>`: Nombre de la columna de longitud (por defecto: "Longitud")
 - `-H, --host <CADENA>`: Host para la API de elevación (por defecto: "api.open-elevation.com")
 - `-f, --output-format <FORMATO>`: Formato de salida (por defecto: csv)
+- `-n, --num-discretize <NÚMERO>`: Número de puntos a interpolar entre cada par de puntos originales (por defecto: 20)
 
 ## Formato del Archivo de Entrada
 
@@ -65,6 +91,7 @@ El programa genera un archivo CSV que contiene:
 - Ángulo transformado (a partir de la fecha)
 - Acción hasheada
 - Coordenadas transformadas (longitud, latitud, elevación)
+- Indicador de punto original o interpolado
 
 Esta salida preserva el posicionamiento relativo y los patrones en los datos mientras oculta la información sensible original.
 
