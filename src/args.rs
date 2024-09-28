@@ -48,4 +48,12 @@ pub struct Args {
     /// Number of points to add when discretizing between each pair of original points
     #[arg(short = 'n', long = "num-discretize", default_value_t = 20)]
     pub discretization_points: usize,
+
+    /// Enable verbose debugging for all requests
+    #[arg(long, short = 'D')]
+    pub debug_verbose: bool,
+
+    /// Enable debugging only for errors
+    #[arg(long, short = 'e')]
+    pub debug_on_error: bool,
 }

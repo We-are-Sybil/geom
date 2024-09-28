@@ -14,6 +14,7 @@ use save_strategy::{Record, DataSaver};
 
 use clap::Parser;
 use colored::Colorize;
+use colored::control::set_override;
 use csv::Reader;
 use ndarray::{Array2, Axis};
 use chrono::NaiveDate;
@@ -21,6 +22,7 @@ use uuid::Uuid;
 
 #[tokio::main]
 async fn main() -> Result<(), GeomError> {
+    set_override(true);
     let args = Args::parse();
 
     println!("{} {:?}", "[+] Processing file:".bold().underline(), args.input);
@@ -46,7 +48,7 @@ async fn main() -> Result<(), GeomError> {
     let mut records = reader.records();
     let batch_size = 15;
 
-    let data_saver = DataSaver::new(args.output_format, args.output.clone());
+    let data_saver = DataSaver::new(args.output_format.clone(), args.output.clone());
 
     println!("{} {}", "[+] Info:".bold().underline(), "Altitude is being fetched and data is being processed.");
     
@@ -78,7 +80,7 @@ async fn main() -> Result<(), GeomError> {
             let latitude: f64 = record.get(headers.iter().position(|h| h == &args.latitude_column).unwrap()).unwrap().parse()?;
             let longitude: f64 = record.get(headers.iter().position(|h| h == &args.longitude_column).unwrap()).unwrap().parse()?;
 
-            let elevation = fetch_elevation(latitude, longitude, &args.host).await?;
+            let elevation = fetch_elevation(latitude, longitude, &args.host, &args).await?;
 
             batch_points.push([longitude, latitude, elevation]);
             batch_data.push((angle, action));
@@ -91,7 +93,7 @@ async fn main() -> Result<(), GeomError> {
                 "[+] Process:".yellow().bold(), 
                 batch_number.to_string().magenta());
             
-            let centered_points = process_points(&batch_array, args.discretization_points, &args.host).await?;
+            let centered_points = process_points(&batch_array, args.discretization_points, &args.host, &args).await?;
 
             // Calculate angles for discretized points
             let mut all_angles = Vec::new();
