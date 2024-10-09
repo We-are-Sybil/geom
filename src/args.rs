@@ -17,9 +17,17 @@ pub struct Args {
     #[arg(long, default_value = "%d/%m/%Y")]
     pub date_format: String,
 
-    /// Column name for Action
-    #[arg(short = 'a', long, default_value = "Accion")]
-    pub action_column: String,
+    /// Column name for Battalion
+    #[arg(short = 'b', long, default_value = "Batallon")]
+    pub battalion_column: String,
+
+    /// Column name for Platoon
+    #[arg(short = 'p', long, default_value = "Peloton")]
+    pub platoon_column: String,
+
+    /// Column name for Company
+    #[arg(short = 'c', long, default_value = "Compañia")]
+    pub company_column: String,
 
     /// Column name for Latitude
     #[arg(short = 'x', long, default_value = "Latitud")]
@@ -56,4 +64,8 @@ pub struct Args {
     /// Enable debugging only for errors
     #[arg(long, short = 'e')]
     pub debug_on_error: bool,
+
+    /// Mapping file path for original to hashed values
+    #[arg(short = 'm', long, default_value = "mapping.csv")]
+    pub mapping_output: PathBuf,
 }

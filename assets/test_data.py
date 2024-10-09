@@ -5,17 +5,17 @@ import numpy as np
 from matplotlib.animation import FFMpegWriter
 import matplotlib.animation as animation
 
-def create_3d_plot_upper_view(ax, points, title, color='b', marker='o'):
+def create_3d_plot_upper_view(ax, points, title, colora='b', colorb='r', marker='o'):
     x, y, z = zip(*points)
-    ax.scatter(x, y, z, c=color, marker=marker)
-    ax.plot(x, y, z, c=color, linestyle='-')
+    ax.scatter(x, y, z, c=colora, marker=marker)
+    ax.plot(x, y, z, c=colorb, linestyle='-')
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
     ax.set_title(title)
     ax.view_init(elev=90, azim=-90)
 
-csv_file_path = './outputf.csv'  # Update this to the actual path of your CSV file
+csv_file_path = './outputg.csv'  # Update this to the actual path of your CSV file
 
 all_points = []
 original_points = []
@@ -44,8 +44,8 @@ fig = plt.figure(figsize=(20, 8))
 ax1 = fig.add_subplot(121, projection='3d')
 ax2 = fig.add_subplot(122, projection='3d', sharex=ax1, sharey=ax1, sharez=ax1)
 
-create_3d_plot_upper_view(ax1, batch_original_points, f'Original Points', color='r', marker='^')
-create_3d_plot_upper_view(ax2, batch_all_points, f'All Points', color='b', marker='o')
+create_3d_plot_upper_view(ax1, batch_original_points, f'Original Points', marker='^')
+create_3d_plot_upper_view(ax2, batch_all_points, f'All Points', marker='o')
 
 # Set up video writer
 writer = FFMpegWriter(fps=30)

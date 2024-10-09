@@ -37,8 +37,8 @@ async fn discretize_points(points: &Array2<f64>, discretization_points: usize, h
         
         for i in 1..=discretization_points {
             let t = i as f64 / (discretization_points as f64 + 1.0);
-            let lat = start[0] * (1.0 - t) + end[0] * t;
-            let lon = start[1] * (1.0 - t) + end[1] * t;
+            let lon = start[0] * (1.0 - t) + end[0] * t;
+            let lat = start[1] * (1.0 - t) + end[1] * t;
             let elevation = fetch_elevation(lat, lon, host, args).await
                 .map_err(|e| GeomError::ElevationFetchError(e.to_string()))?;
             discretized_points.push(vec![lat, lon, elevation]);

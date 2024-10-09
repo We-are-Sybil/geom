@@ -4,6 +4,7 @@ use csv::Error as CsvError;
 use reqwest::Error as ReqwestError;
 use ndarray::ShapeError;
 use chrono::ParseError as ChronoParseError;
+use openssl::error::ErrorStack;
 
 #[derive(Error, Debug)]
 pub enum GeomError {
@@ -33,4 +34,7 @@ pub enum GeomError {
 
     #[error("Elevation fetch error: {0}")]
     ElevationFetchError(String),
+
+    #[error("OpenSSL error: {0}")]
+    OpenSslError(#[from] ErrorStack),
 }

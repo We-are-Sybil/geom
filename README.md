@@ -8,29 +8,13 @@ Geom es una potente herramienta de procesamiento de datos diseñada para analiza
 
 - **Transformación de Coordenadas**: Aplica un enfoque de ventana deslizante para transformar coordenadas, preservando el posicionamiento relativo mientras oculta las ubicaciones absolutas.
 - **Análisis Temporal**: Convierte la información de fechas en datos angulares para el análisis de patrones cíclicos.
-- **Hash de Acciones**: Implementa un mecanismo de hash seguro para datos categóricos, permitiendo el análisis de patrones sin revelar acciones específicas.
+- **Hash de Datos Categóricos**: Implementa un mecanismo de hash seguro para datos categóricos (Batallón, Pelotón, Compañía), permitiendo el análisis de patrones sin revelar información específica.
+- **Interpolación de Puntos**: Genera puntos adicionales entre cada par de puntos originales, asignándoles los datos categóricos del primer punto del par.
 - **Procesamiento por Lotes**: Procesa datos en tamaños de lote configurables para un manejo eficiente de grandes conjuntos de datos.
 - **Recuperación de Datos de Elevación**: Se integra con APIs externas para obtener datos de elevación para coordenadas dadas.
 - **Manejo Flexible de Entrada**: Admite nomenclatura personalizada de columnas en archivos CSV de entrada.
 - **Salida Segura**: Genera una salida en un formato que mantiene la utilidad de los datos para el análisis mientras preserva la confidencialidad.
-- **Interpolación de Datos**: Implementa un proceso de interpolación para mejorar la precisión y detalle de los datos geográficos.
-
-## Interpolación de Datos
-
-Geom incluye una función de interpolación de datos que mejora significativamente la precisión y el detalle de los análisis geográficos:
-
-- **Discretización de Puntos**: Entre cada par de puntos originales, se añaden puntos adicionales (configurable, por defecto 20 puntos).
-- **Cálculo de Elevación**: Para cada punto interpolado, se obtiene la elevación correspondiente mediante una API externa.
-- **Mejora de Precisión**: Permite obtener una representación más fiel del terreno entre los puntos reportados.
-- **Detección de Anomalías**: Ayuda a identificar posibles irregularidades en el movimiento que podrían no ser evidentes con solo los puntos originales.
-
-### Video Comparativo
-
-En la siguiente demostración visual se puede ver el impacto de la interpolación de datos: 
-
-https://github.com/user-attachments/assets/207ecd79-a643-4afe-8fd0-dc273c6acbed
-
-Este video muestra cómo la interpolación mejora la representación de rutas y terrenos, proporcionando insights más precisos.
+- **Mapeo de Valores Originales**: Genera un archivo de mapeo separado que permite a los propietarios de los datos recuperar los valores originales de los datos categóricos.
 
 ## Instalación
 
@@ -54,17 +38,10 @@ Este video muestra cómo la interpolación mejora la representación de rutas y 
 
 ## Uso
 
-### Descarga del Ejecutable
-
-Descargue el ejecutable más reciente desde la sección de Releases en GitHub:
-[https://github.com/We-are-Sybil/geom/releases](https://github.com/We-are-Sybil/geom/releases)
-
-### Ejecución
-
-Una vez descargado, ejecute el binario con el siguiente comando:
+Ejecute el binario compilado con el siguiente comando:
 
 ```
-./geom -i <archivo_entrada> -o <archivo_salida> -s <salt> -n <puntos_interpolacion>
+./target/release/geom -i <archivo_entrada> -o <archivo_salida> -s <salt> -m <archivo_mapeo>
 ```
 
 ### Argumentos de Línea de Comando
@@ -73,33 +50,49 @@ Una vez descargado, ejecute el binario con el siguiente comando:
 - `-o, --output <ARCHIVO>`: Ruta del archivo de salida (por defecto: "output.csv")
 - `-s, --salt <CADENA>`: Salt para el hash (requerido)
 - `-d, --date-column <CADENA>`: Nombre de la columna de fecha (por defecto: "Fecha")
-- `-a, --action-column <CADENA>`: Nombre de la columna de acción (por defecto: "Accion")
+- `-b, --battalion-column <CADENA>`: Nombre de la columna de batallón (por defecto: "Batallon")
+- `-p, --platoon-column <CADENA>`: Nombre de la columna de pelotón (por defecto: "Peloton")
+- `-c, --company-column <CADENA>`: Nombre de la columna de compañía (por defecto: "Compañia")
 - `-x, --latitude-column <CADENA>`: Nombre de la columna de latitud (por defecto: "Latitud")
 - `-y, --longitude-column <CADENA>`: Nombre de la columna de longitud (por defecto: "Longitud")
 - `-H, --host <CADENA>`: Host para la API de elevación (por defecto: "api.open-elevation.com")
 - `-f, --output-format <FORMATO>`: Formato de salida (por defecto: csv)
-- `-n, --num-discretize <NÚMERO>`: Número de puntos a interpolar entre cada par de puntos originales (por defecto: 20)
+- `-m, --mapping-output <ARCHIVO>`: Ruta del archivo de mapeo de valores originales a hasheados (por defecto: "mapping.csv")
+- `-n, --num-discretize <NÚMERO>`: Número de puntos a añadir entre cada par de puntos originales (por defecto: 20)
+- `-D, --debug-verbose`: Habilita la depuración detallada para todas las solicitudes
+- `-e, --debug-on-error`: Habilita la depuración solo para errores
 
 ## Formato del Archivo de Entrada
 
-La entrada debe ser un archivo CSV con columnas para fecha, acción, latitud y longitud. Los nombres de las columnas se pueden especificar usando los argumentos de línea de comando.
+La entrada debe ser un archivo CSV con columnas para fecha, batallón, pelotón, compañía, latitud y longitud. Los nombres de las columnas se pueden especificar usando los argumentos de línea de comando.
 
 ## Salida
 
-El programa genera un archivo CSV que contiene:
-- ID de lote
-- Ángulo transformado (a partir de la fecha)
-- Acción hasheada
-- Coordenadas transformadas (longitud, latitud, elevación)
-- Indicador de punto original o interpolado
+El programa genera dos archivos:
 
-Esta salida preserva el posicionamiento relativo y los patrones en los datos mientras oculta la información sensible original.
+1. Un archivo CSV de salida que contiene:
+   - ID de lote
+   - Ángulo transformado (a partir de la fecha)
+   - Batallón hasheado
+   - Pelotón hasheado
+   - Compañía hasheada
+   - Coordenadas transformadas (longitud, latitud, elevación)
+   - Indicador de si el punto es original o interpolado
+
+2. Un archivo CSV de mapeo que contiene:
+   - Tipo (Batallón, Pelotón, o Compañía)
+   - Valor original
+   - Valor hasheado
+
+Esta salida preserva el posicionamiento relativo y los patrones en los datos mientras oculta la información sensible original. El archivo de mapeo permite a los propietarios de los datos recuperar los valores originales cuando sea necesario.
 
 ## Notas Importantes
 
-- Asegúrese de mantener la consistencia en el etiquetado de acciones en el CSV de entrada. El proceso de hash es sensible a variaciones menores en el texto.
+- Asegúrese de mantener la consistencia en el etiquetado de batallones, pelotones y compañías en el CSV de entrada. El proceso de hash es sensible a variaciones menores en el texto.
 - El salt utilizado para el hash debe mantenerse confidencial para preservar la seguridad de los datos transformados.
+- Los puntos interpolados entre cada par de puntos originales heredan los datos categóricos (batallón, pelotón, compañía) del primer punto del par.
 - Esta herramienta está diseñada para la anonimización de datos y el análisis de patrones. No debe utilizarse como el único método para asegurar información altamente sensible.
+- El archivo de mapeo debe mantenerse seguro, ya que contiene la información necesaria para revertir el proceso de anonimización de los datos categóricos.
 
 ## Contribuciones
 

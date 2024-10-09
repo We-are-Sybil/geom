@@ -23,7 +23,9 @@ impl FromStr for SavingType {
 pub struct Record {
     pub batch_id: String,
     pub angle: f64,
-    pub action: String,
+    pub battalion: String,
+    pub platoon: String,
+    pub company: String,
     pub longitude: f64,
     pub latitude: f64,
     pub elevation: f64,
@@ -43,14 +45,16 @@ impl SaveStrategy for CsvSaveStrategy {
         let mut writer = Writer::from_path(output_path)?;
         
         // Write header
-        writer.write_record(&["BatchID", "Angle", "Action", "Processed_Longitude", "Processed_Latitude", "Processed_Elevation", "Is_Original"])?;
+        writer.write_record(&["BatchID", "Angle", "Battalion", "Platoon", "Company", "Processed_Longitude", "Processed_Latitude", "Processed_Elevation", "Is_Original"])?;
         
         // Write records
         for record in records {
             writer.write_record(&[
                 &record.batch_id,
                 &record.angle.to_string(),
-                &record.action,
+                &record.battalion,
+                &record.platoon,
+                &record.company,
                 &record.longitude.to_string(),
                 &record.latitude.to_string(),
                 &record.elevation.to_string(),
@@ -67,7 +71,6 @@ impl SaveStrategy for CsvSaveStrategy {
 pub fn create_save_strategy(saving_type: SavingType) -> Box<dyn SaveStrategy> {
     match saving_type {
         SavingType::Csv => Box::new(CsvSaveStrategy),
-        // Add more cases here as we implement more saving types
     }
 }
 

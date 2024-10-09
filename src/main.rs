@@ -10,15 +10,16 @@ use api::fetch_elevation;
 use csv_utils::{find_columns, print_column_results, hash_with_salt};
 use geometry::{date_to_angle, process_points};
 use error::GeomError;
-use save_strategy::{Record, DataSaver};
+use save_strategy::{Record, DataSaver, SavingType};
 
 use clap::Parser;
 use colored::Colorize;
 use colored::control::set_override;
-use csv::Reader;
+use csv::{Reader, Writer};
 use ndarray::{Array2, Axis};
 use chrono::NaiveDate;
 use uuid::Uuid;
+use std::collections::HashMap;
 
 #[tokio::main]
 async fn main() -> Result<(), GeomError> {
@@ -32,7 +33,9 @@ async fn main() -> Result<(), GeomError> {
 
     let columns_to_find = vec![
         args.date_column.clone(),
-        args.action_column.clone(),
+        args.battalion_column.clone(),
+        args.platoon_column.clone(),
+        args.company_column.clone(),
         args.longitude_column.clone(),
         args.latitude_column.clone(),
     ];
@@ -48,12 +51,16 @@ async fn main() -> Result<(), GeomError> {
     let mut records = reader.records();
     let batch_size = 15;
 
-    let data_saver = DataSaver::new(args.output_format.clone(), args.output.clone());
+    let data_saver = DataSaver::new(SavingType::Csv, args.output.clone());
 
     println!("{} {}", "[+] Info:".bold().underline(), "Altitude is being fetched and data is being processed.");
     
     let mut all_processed_records = Vec::new();
     let mut batch_number = 0;
+
+    let mut battalion_map = HashMap::new();
+    let mut platoon_map = HashMap::new();
+    let mut company_map = HashMap::new();
 
     while let Some(batch_result) = records.by_ref().take(batch_size).collect::<Result<Vec<_>, _>>().ok() {
         if batch_result.is_empty() {
@@ -76,14 +83,21 @@ async fn main() -> Result<(), GeomError> {
             let date = NaiveDate::parse_from_str(date_str, &args.date_format)?;
             let angle = date_to_angle(date);
             
-            let action = record.get(headers.iter().position(|h| h == &args.action_column).unwrap()).unwrap().to_string();
+            let battalion = record.get(headers.iter().position(|h| h == &args.battalion_column).unwrap()).unwrap().to_string();
+            let platoon = record.get(headers.iter().position(|h| h == &args.platoon_column).unwrap()).unwrap().to_string();
+            let company = record.get(headers.iter().position(|h| h == &args.company_column).unwrap()).unwrap().to_string();
+
+            let hashed_battalion = battalion_map.entry(battalion.clone()).or_insert_with(|| hash_with_salt(&battalion, &args.salt));
+            let hashed_platoon = platoon_map.entry(platoon.clone()).or_insert_with(|| hash_with_salt(&platoon, &args.salt));
+            let hashed_company = company_map.entry(company.clone()).or_insert_with(|| hash_with_salt(&company, &args.salt));
+
             let latitude: f64 = record.get(headers.iter().position(|h| h == &args.latitude_column).unwrap()).unwrap().parse()?;
             let longitude: f64 = record.get(headers.iter().position(|h| h == &args.longitude_column).unwrap()).unwrap().parse()?;
 
             let elevation = fetch_elevation(latitude, longitude, &args.host, &args).await?;
 
             batch_points.push([longitude, latitude, elevation]);
-            batch_data.push((angle, action));
+            batch_data.push((angle, hashed_battalion.clone(), hashed_platoon.clone(), hashed_company.clone()));
         }
 
         if !batch_points.is_empty() {
@@ -95,33 +109,44 @@ async fn main() -> Result<(), GeomError> {
             
             let centered_points = process_points(&batch_array, args.discretization_points, &args.host, &args).await?;
 
-            // Calculate angles for discretized points
+            // Calculate angles and unit info for discretized points
             let mut all_angles = Vec::new();
+            let mut all_battalions = Vec::new();
+            let mut all_platoons = Vec::new();
+            let mut all_companies = Vec::new();
+
             for i in 0..batch_data.len() - 1 {
                 let start_angle = batch_data[i].0;
                 let end_angle = batch_data[i + 1].0;
                 let angle_step = (end_angle - start_angle) / (args.discretization_points as f64 + 1.0);
                 
                 all_angles.push(start_angle);
+                all_battalions.push(batch_data[i].1.clone());
+                all_platoons.push(batch_data[i].2.clone());
+                all_companies.push(batch_data[i].3.clone());
+
                 for j in 1..=args.discretization_points {
                     all_angles.push(start_angle + angle_step * j as f64);
+                    all_battalions.push(batch_data[i].1.clone());
+                    all_platoons.push(batch_data[i].2.clone());
+                    all_companies.push(batch_data[i].3.clone());
                 }
             }
             all_angles.push(batch_data.last().unwrap().0);
+            all_battalions.push(batch_data.last().unwrap().1.clone());
+            all_platoons.push(batch_data.last().unwrap().2.clone());
+            all_companies.push(batch_data.last().unwrap().3.clone());
 
             // Process records
             for (i, row) in centered_points.rows().into_iter().enumerate() {
                 let is_original = i % (args.discretization_points + 1) == 0;
-                let action = if is_original {
-                    hash_with_salt(&batch_data[i / (args.discretization_points + 1)].1, &args.salt)
-                } else {
-                    String::new()
-                };
 
                 all_processed_records.push(Record {
                     batch_id: batch_id.clone(),
                     angle: all_angles[i],
-                    action,
+                    battalion: all_battalions[i].clone(),
+                    platoon: all_platoons[i].clone(),
+                    company: all_companies[i].clone(),
                     longitude: row[0],
                     latitude: row[1],
                     elevation: row[2],
@@ -141,7 +166,23 @@ async fn main() -> Result<(), GeomError> {
     // Save processed records using the DataSaver
     data_saver.save(&all_processed_records).map_err(|e| GeomError::IoError(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?;
 
-    println!("{} {}", "[✓] Success:".green().bold(), format!("Data processing complete. Output saved to '{}'.", args.output.display()));
+    // Save mapping file
+    let mut mapping_writer = Writer::from_path(&args.mapping_output)?;
+    mapping_writer.write_record(&["Type", "Original", "Hashed"])?;
+    
+    for (original, hashed) in battalion_map.iter() {
+        mapping_writer.write_record(&["Battalion", original, hashed])?;
+    }
+    for (original, hashed) in platoon_map.iter() {
+        mapping_writer.write_record(&["Platoon", original, hashed])?;
+    }
+    for (original, hashed) in company_map.iter() {
+        mapping_writer.write_record(&["Company", original, hashed])?;
+    }
+    
+    mapping_writer.flush()?;
+
+    println!("{} {}", "[✓] Success:".green().bold(), format!("Data processing complete. Output saved to '{}' and mapping saved to '{}'.", args.output.display(), args.mapping_output.display()));
 
     Ok(())
 }
