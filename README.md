@@ -4,6 +4,12 @@
 
 Geom es una potente herramienta de procesamiento de datos diseñada para analizar y transformar datos de coordenadas geográficas manteniendo la confidencialidad de la información. Es especialmente útil para organizaciones que necesitan procesar datos de ubicación sensibles sin comprometer la privacidad.
 
+Para ver una demostración del resultado de la interpolación y transformación de datos realizada por Geom, puede ver el siguiente video:
+
+https://github.com/user-attachments/assets/67440825-96c0-4789-a066-648a61aabe07
+
+Este video muestra visualmente cómo los datos procesados por Geom mantienen patrones y relaciones espaciales mientras se protege la información sensible.
+
 ## Características
 
 - **Transformación de Coordenadas**: Aplica un enfoque de ventana deslizante para transformar coordenadas, preservando el posicionamiento relativo mientras oculta las ubicaciones absolutas.
@@ -15,7 +21,6 @@ Geom es una potente herramienta de procesamiento de datos diseñada para analiza
 - **Manejo Flexible de Entrada**: Admite nomenclatura personalizada de columnas en archivos CSV de entrada.
 - **Salida Segura**: Genera una salida en un formato que mantiene la utilidad de los datos para el análisis mientras preserva la confidencialidad.
 - **Mapeo de Valores Originales**: Genera un archivo de mapeo separado que permite a los propietarios de los datos recuperar los valores originales de los datos categóricos.
-
 ## Instalación
 
 ### Prerrequisitos
